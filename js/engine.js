@@ -14,11 +14,12 @@
  * a little simpler to work with.
  */
 
-var Engine = (function(global) {
+var Engine = (function(game) {
     /* Predefine the variables we'll be using within this scope,
      * create the canvas element, grab the 2D context for that canvas
      * set the canvas elements height/width and add it to the DOM.
      */
+     /*
     var doc = global.document,
         win = global.window,
         canvas = doc.createElement('canvas'),
@@ -28,6 +29,7 @@ var Engine = (function(global) {
     canvas.width = 505;
     canvas.height = 606;
     doc.body.appendChild(canvas);
+    */
 
     /* This function serves as the kickoff point for the game loop itself
      * and handles properly calling the update and render methods.
@@ -56,7 +58,9 @@ var Engine = (function(global) {
         /* Use the browser's requestAnimationFrame function to call this
          * function again as soon as the browser is able to draw another frame.
          */
-        //win.requestAnimationFrame(main);
+        if(!game.pause) {
+            window.requestAnimationFrame(main);
+        }
     }
 
     /* This function does some initial setup that should only occur once,
@@ -80,9 +84,38 @@ var Engine = (function(global) {
      */
     function update(dt) {
         updateEntities(dt);
-        // checkCollisions();
+        if (checkReachGoal())
+            playerWin();
+        if (checkCollisions()) {
+            game.player.attacked();
+        }
+        if (game.player.life == 0)
+            playerLose();
     }
 
+    function checkReachGoal() {
+        if (game.player.row === 0)
+            return true;
+    }
+
+    function checkCollisions() {
+        var collision = false;
+        game.allEnemies.forEach(function(enemy) {
+            if (enemy.row === game.player.row &&
+                enemy.col === game.player.col) {
+                collision = true;
+            }
+        });
+        return collision;
+    }
+
+    function playerLose() {
+        game.pause = true;
+    }
+
+    function playerWin() {
+        game.pause = true;
+    }
     /* This is called by the update function and loops through all of the
      * objects within your allEnemies array as defined in app.js and calls
      * their update() methods. It will then call the update function for your
@@ -91,10 +124,10 @@ var Engine = (function(global) {
      * render methods.
      */
     function updateEntities(dt) {
-        allEnemies.forEach(function(enemy) {
+        game.allEnemies.forEach(function(enemy) {
             enemy.update(dt);
         });
-        player.update();
+        game.player.update();
     }
 
     /* This function initially draws the "game level", it will then call
@@ -117,7 +150,7 @@ var Engine = (function(global) {
             ],
             numRows = 6,
             numCols = 5,
-            row, col;
+            row, col, image;
 
         /* Loop through the number of rows and columns we've defined above
          * and, using the rowImages array, draw the correct image for that
@@ -136,6 +169,11 @@ var Engine = (function(global) {
             }
         }
 
+        for(var i = 0; i < game.player.life; i++) {
+            image = Resources.get('images/Heart.png');
+            ctx.drawImage(image, 50 * i, 500, image.width / 2, image.height / 2);
+        }
+
         renderEntities();
     }
 
@@ -147,11 +185,14 @@ var Engine = (function(global) {
         /* Loop through all of the objects within the allEnemies array and call
          * the render function you have defined.
          */
-        allEnemies.forEach(function(enemy) {
+        game.allEnemies.forEach(function(enemy) {
             enemy.render();
         });
 
-        player.render();
+        if (game.player.invincible)
+            ctx.globalAlpha = 0.5
+        game.player.render();
+        ctx.globalAlpha = 1;
     }
 
     /* This function does nothing but it could have been a good place to
@@ -171,7 +212,9 @@ var Engine = (function(global) {
         'images/water-block.png',
         'images/grass-block.png',
         'images/enemy-bug.png',
-        'images/char-boy.png'
+        'images/char-boy.png',
+        'images/char-girl.png',
+        'images/Heart.png'
     ]);
     Resources.onReady(init);
 
@@ -179,6 +222,6 @@ var Engine = (function(global) {
      * object when run in a browser) so that developers can use it more easily
      * from within their app.js files.
      */
-    global.ctx = ctx;
-    global.canvas = canvas;
+    //global.ctx = ctx;
+    //global.canvas = canvas;
 }); //(this);

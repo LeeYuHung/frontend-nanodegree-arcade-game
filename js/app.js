@@ -2,40 +2,99 @@ const ROW_HEIGHT = 83;
 const COL_WIDTH = 101;
 const TOP_PADDING = 20;
 
+var global = this, canvas, ctx;
+
 var Game = {
     score: 0,
     life: 3,
-    role: "boy",
-    canvas: "",
-    ctx: "",
+    role: [ "boy", "girl"],
+    roleId: 0,
+    allEnemies:[],
+    player: "",
+    pause: false,
     init: function() {
-        var canvas = document.createElement('canvas');
+        canvas = document.createElement('canvas');
         canvas.width = 505;
         canvas.height = 606;
         document.body.appendChild(canvas);
-        this.canvas = document.querySelector("canvas");
-        this.ctx = this.canvas.getContext("2d");
+        canvas = document.querySelector("canvas");
+        ctx = canvas.getContext("2d");
+        ctx.font = "20pt Arial";
+        this.bindEntryControl();
         this.loadEntry();
     },
-    bind: function() {
+    bindEntryControl: function() {
+        document.addEventListener('keyup',this.entryControl);
+    },
+    entryControl: function(e) {
+        if (e.keyCode === 39 || e.keyCode === 37) {
+            Game.roleId  = (Game.roleId + 1) % 2;
+            Game.showRoleDescription(Game.role[Game.roleId]);
+        }
+        if (e.keyCode === 13) {
+            Game.start();
+        }
+    },
+    bindGameControl: function() {
+        document.addEventListener('keyup', function(e) {
+            var allowedKeys = {
+                37: 'left',
+                38: 'up',
+                39: 'right',
+                40: 'down'
+            };
 
+            Game.player.handleInput(allowedKeys[e.keyCode]);
+        });
     },
     start: function() {
-        this.loadEntry();
+        document.removeEventListener('keyup', this.entryControl);
+        this.bindGameControl();
+        this.createPlayer();
+        this.createEnemies();
+        Engine(Game);
+    },
+    createPlayer: function() {
+        var playerSprite = "images/char-" + this.role[this.roleId] + ".png";
+        if (Game.role[Game.roleId] === "boy")
+            this.player = new Player(playerSprite, 2, 5, 0.5, 2);
+        else if (Game.role[Game.roleId] === "girl")
+            this.player = new Player(playerSprite, 2, 5, 1, 1);
+
+    },
+    createEnemies: function() {
+        var enemySprite = "images/enemy-bug.png";
+        this.allEnemies.push(new Enemy(enemySprite, 1, 1, 200));
+        this.allEnemies.push(new Enemy(enemySprite, 1, 2, 500));
+        this.allEnemies.push(new Enemy(enemySprite, 1, 3, 400));
     },
     loadEntry: function() {
        
-        image = new Image();
-        image.src = "images/char-boy.png";
+        imageBoy = new Image();
+        imageBoy.src = "images/char-boy.png";
+        imageGirl = new Image();
+        imageGirl.src = "images/char-girl.png"
         
-        image.onload = function() {
-            Game.ctx.drawImage(image, 120, 250);
-            Game.ctx.drawImage(image, Game.canvas.width - 120 - image.width, 250);
-            Game.showRoleDescription("role");  
+        window.onload = function() {
+            Game.showRoleDescription(Game.role[Game.roleId]);
         }
     },
-    showRoleDescription: function(role) {
-       
+    showRoleDescription: function() {
+        var role_description = document.getElementById(this.role[this.roleId] + "-description").text;
+        var posX = canvas.width * (this.roleId + 1) / 4, 
+            posY = 310;
+        this.clearRoleDescription();
+        ctx.drawImage(imageBoy, canvas.width / 4, 250);
+        ctx.drawImage(imageGirl, canvas.width * 2 / 4, 250);
+        ctx.strokeRect(posX, posY, COL_WIDTH, ROW_HEIGHT);
+        ctx.fillText(role_description, 0, 100);
+    },
+    clearRoleDescription: function() {
+        var posX = canvas.width / 4 - 1, 
+            posY = 309;
+        ctx.clearRect(posX, posY, COL_WIDTH + 10, ROW_HEIGHT + 10);
+        ctx.clearRect(posX * 2, posY, COL_WIDTH + 10, ROW_HEIGHT + 10);
+        ctx.clearRect(0, 0, 500, 200);
     }
 }
 
@@ -81,25 +140,38 @@ Enemy.prototype.update = function(dt) {
     this.x += this.speed * dt;
     if(this.x > canvas.width)
         this.x = 0;
+    this.row = this.getRow();
+    this.col = this.getCol();
 };
 
 // Draw the enemy on the screen, required method for game
-Enemy.prototype.render = function() {
-    ctx.drawImage(Resources.get(this.sprite), this.x, this.y);
-};
 
 // Now write your own player class
 // This class requires an update(), render() and
 // a handleInput() method.
-var Player = function(sprite, x, y, pace) {
+var Player = function(sprite, x, y, pace, life) {
     Character.call(this, sprite, x, y);
     this.pace = pace;
+    this.life = life;
+    this.invincible = false;
+    this.invincibleTime = 0;
 }
 Player.prototype = Object.create(Character.prototype);
 Player.prototype.constructor = Player;
 
 Player.prototype.update = function(dt) {
-
+    if(this.invincible){
+        if(Date.now() - this.invincibleTime > 1000) {
+            this.invincible = false;
+        }
+    }
+}
+Player.prototype.attacked = function() {
+    if (!this.invincible) {
+        this.invincible = true;
+        this.invincibleTime = Date.now();
+        this.life -= 1;
+    }
 }
 
 Player.prototype.handleInput = function(key) {
@@ -111,20 +183,19 @@ Player.prototype.handleInput = function(key) {
         this.y += ROW_HEIGHT * this.pace;
     else if(key === 'left')
         this.x -= COL_WIDTH * this.pace;
+    this.col = this.getCol();
+    this.row = this.getRow();
 }
 
 // Now instantiate your objects.
 // Place all enemy objects in an array called allEnemies
 // Place the player object in a variable called player
-var playerSprite = "images/char-boy.png", enemySprite = "images/enemy-bug.png";
-var allEnemies = [], player = new Player(playerSprite, 2, 5, 1);
-    allEnemies.push(new Enemy(enemySprite, 1, 1, 200));
-    allEnemies.push(new Enemy(enemySprite, 1, 2, 500));
-    allEnemies.push(new Enemy(enemySprite, 1, 3, 400));
+
 
 
 // This listens for key presses and sends the keys to your
 // Player.handleInput() method. You don't need to modify this.
+/*
 document.addEventListener('keyup', function(e) {
     var allowedKeys = {
         37: 'left',
@@ -135,3 +206,4 @@ document.addEventListener('keyup', function(e) {
 
     player.handleInput(allowedKeys[e.keyCode]);
 });
+*/
