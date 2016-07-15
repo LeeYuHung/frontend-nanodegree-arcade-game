@@ -19,8 +19,8 @@ var Game = {
         document.body.appendChild(canvas);
         canvas = document.querySelector("canvas");
         ctx = canvas.getContext("2d");
-        ctx.font = "20pt Arial";
-        this.bindEntryControl();
+        ctx.textAlign = "center";
+        ctx.font = "20pt Arial";  
         this.loadEntry();
     },
     bindEntryControl: function() {
@@ -36,22 +36,24 @@ var Game = {
         }
     },
     bindGameControl: function() {
-        document.addEventListener('keyup', function(e) {
-            var allowedKeys = {
-                37: 'left',
-                38: 'up',
-                39: 'right',
-                40: 'down'
-            };
+        document.addEventListener('keyup', this.gameControl);
+    },
+    gameControl: function(e) {
+        var allowedKeys = {
+            37: 'left',
+            38: 'up',
+            39: 'right',
+            40: 'down'
+        };
 
-            Game.player.handleInput(allowedKeys[e.keyCode]);
-        });
+        Game.player.handleInput(allowedKeys[e.keyCode]);
     },
     start: function() {
         document.removeEventListener('keyup', this.entryControl);
         this.bindGameControl();
         this.createPlayer();
         this.createEnemies();
+        Game.pause = false;
         Engine(Game);
     },
     createPlayer: function() {
@@ -69,14 +71,15 @@ var Game = {
         this.allEnemies.push(new Enemy(enemySprite, 1, 3, 400));
     },
     loadEntry: function() {
-       
         imageBoy = new Image();
         imageBoy.src = "images/char-boy.png";
         imageGirl = new Image();
         imageGirl.src = "images/char-girl.png"
-        
+
+        this.bindEntryControl();
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
         window.onload = function() {
-            Game.showRoleDescription(Game.role[Game.roleId]);
+            Game.showRoleDescription(Game.role[0]);
         }
     },
     showRoleDescription: function() {
@@ -87,7 +90,7 @@ var Game = {
         ctx.drawImage(imageBoy, canvas.width / 4, 250);
         ctx.drawImage(imageGirl, canvas.width * 2 / 4, 250);
         ctx.strokeRect(posX, posY, COL_WIDTH, ROW_HEIGHT);
-        ctx.fillText(role_description, 0, 100);
+        ctx.fillText(role_description, canvas.width / 2, 100);
     },
     clearRoleDescription: function() {
         var posX = canvas.width / 4 - 1, 
@@ -95,7 +98,12 @@ var Game = {
         ctx.clearRect(posX, posY, COL_WIDTH + 10, ROW_HEIGHT + 10);
         ctx.clearRect(posX * 2, posY, COL_WIDTH + 10, ROW_HEIGHT + 10);
         ctx.clearRect(0, 0, 500, 200);
-    }
+    },
+    end: function(result) {
+        this.pause = true;
+        ctx.fillText("You " + result + "!", canvas.width / 2, 40);
+    },
+
 }
 
 Game.init();

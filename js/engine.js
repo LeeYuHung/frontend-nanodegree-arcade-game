@@ -19,6 +19,7 @@ var Engine = (function(game) {
      * create the canvas element, grab the 2D context for that canvas
      * set the canvas elements height/width and add it to the DOM.
      */
+     var lasttime;
      /*
     var doc = global.document,
         win = global.window,
@@ -50,6 +51,9 @@ var Engine = (function(game) {
         update(dt);
         render();
 
+        if (game.player.life == 0)
+            game.end("lose");
+
         /* Set our lastTime variable which is used to determine the time delta
          * for the next time this function is called.
          */
@@ -58,9 +62,13 @@ var Engine = (function(game) {
         /* Use the browser's requestAnimationFrame function to call this
          * function again as soon as the browser is able to draw another frame.
          */
-        if(!game.pause) {
-            window.requestAnimationFrame(main);
+        if(game.pause) {
+            document.addEventListener('keyup', reset);
+            return;
         }
+
+        window.requestAnimationFrame(main);
+            
     }
 
     /* This function does some initial setup that should only occur once,
@@ -68,7 +76,7 @@ var Engine = (function(game) {
      * game loop.
      */
     function init() {
-        reset();
+        //reset();
         lastTime = Date.now();
         main();
     }
@@ -85,12 +93,9 @@ var Engine = (function(game) {
     function update(dt) {
         updateEntities(dt);
         if (checkReachGoal())
-            playerWin();
-        if (checkCollisions()) {
+            game.end("win");
+        if (checkCollisions())
             game.player.attacked();
-        }
-        if (game.player.life == 0)
-            playerLose();
     }
 
     function checkReachGoal() {
@@ -109,13 +114,6 @@ var Engine = (function(game) {
         return collision;
     }
 
-    function playerLose() {
-        game.pause = true;
-    }
-
-    function playerWin() {
-        game.pause = true;
-    }
     /* This is called by the update function and loops through all of the
      * objects within your allEnemies array as defined in app.js and calls
      * their update() methods. It will then call the update function for your
@@ -169,9 +167,10 @@ var Engine = (function(game) {
             }
         }
 
+        ctx.clearRect(0 , 0, canvas.width, 50);
         for(var i = 0; i < game.player.life; i++) {
             image = Resources.get('images/Heart.png');
-            ctx.drawImage(image, 50 * i, 500, image.width / 2, image.height / 2);
+            ctx.drawImage(image, canvas.width - (30 * i) - 45, 0, image.width / 3, image.height / 3);
         }
 
         renderEntities();
@@ -199,7 +198,15 @@ var Engine = (function(game) {
      * handle game reset states - maybe a new game menu or a game over screen
      * those sorts of things. It's only called once by the init() method.
      */
-    function reset() {
+    function reset(e) {
+        if (e.keyCode === 13){
+            document.removeEventListener('keyup', Engine.reset);
+            document.removeEventListener('keyup', game.gameControl);
+            game.bindEntryControl();
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            game.showRoleDescription(Game.role[0]);
+            game.pause = false;
+        }
         // noop
     }
 
