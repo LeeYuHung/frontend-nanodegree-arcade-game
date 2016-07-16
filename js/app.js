@@ -117,14 +117,20 @@ Player.prototype.attacked = function() {
 
 // This function defines how player character react with control buttons.
 Player.prototype.handleInput = function(key) {
-    if (key === 'up') 
+    if (key === 'up')
         this.y -= ROW_HEIGHT * this.pace;
-    else if(key === 'right')
-        this.x += COL_WIDTH * this.pace;
-    else if(key === 'down')
-        this.y += ROW_HEIGHT * this.pace;
-    else if(key === 'left')
-        this.x -= COL_WIDTH * this.pace;
+    else if (key === 'right') {
+        if (this.x < COL_WIDTH * 4)
+            this.x += COL_WIDTH * this.pace;
+    }
+    else if (key === 'down') {
+        if (this.y < ROW_HEIGHT * 5 - TOP_PADDING)
+            this.y += ROW_HEIGHT * this.pace;
+    }
+    else if(key === 'left'){
+        if (this.x > 0)
+            this.x -= COL_WIDTH * this.pace;
+    }
     this.col = this.getCol();
     this.row = this.getRow();
 }
