@@ -11,26 +11,94 @@
  *
  * This engine is available globally via the Engine variable and it also makes
  * the canvas' context (ctx) object globally available to make writing app.js
- * a little simpler to work with.
+ * a little simpler to work with.ssas
  */
 
-var Engine = (function(game) {
+var Engine = function() {
     /* Predefine the variables we'll be using within this scope,
      * create the canvas element, grab the 2D context for that canvas
      * set the canvas elements height/width and add it to the DOM.
      */
-     var lasttime;
-     /*
-    var doc = global.document,
+    var lasttime,
+        doc = global.document,
         win = global.window,
         canvas = doc.createElement('canvas'),
-        ctx = canvas.getContext('2d'),
-        lastTime;
+        ctx = canvas.getContext('2d');
 
     canvas.width = 505;
     canvas.height = 606;
     doc.body.appendChild(canvas);
-    */
+    ctx.textAlign = "center";
+    ctx.font = "20pt Arial";
+
+    // This function load the entry page.
+    function loadEntry() {
+        document.addEventListener('keyup',entryControl);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        showRoleDescription(Game.role[0]);
+    }
+
+    // This function defines the control buttons in entry page.
+    function entryControl(e) {
+        if (e.keyCode === 39 || e.keyCode === 37) {
+            Game.roleId  = (Game.roleId + 1) % 2;
+            showRoleDescription();
+        }
+        if (e.keyCode === 13) {
+            document.removeEventListener('keyup', this.entryControl);
+            gameStart();
+        }
+    }
+
+    // This function starts the game.
+    function gameStart() {
+        document.removeEventListener('keyup', entryControl);
+        document.addEventListener('keyup', gameControl);
+        Game.init();
+        Game.stop = false;
+        main();
+    }
+
+    // This function defines the control buttons in the game.
+    function gameControl(e) {
+        var allowedKeys = {
+            37: 'left',
+            38: 'up',
+            39: 'right',
+            40: 'down'
+        };
+
+        Game.player.handleInput(allowedKeys[e.keyCode]);
+    }
+
+    // This function will show the role description and put a box around the selected role.
+    function showRoleDescription() {
+        var role_description = document.getElementById(Game.role[Game.roleId] +
+                               "-description").text;
+        var posX = canvas.width * (Game.roleId + 1) / 4, 
+            posY = 310;
+        clearRoleDescription();
+        ctx.drawImage(Resources.get('images/char-boy.png'), canvas.width / 4, 250);
+        ctx.drawImage(Resources.get('images/char-girl.png'), canvas.width * 2 / 4, 250);
+        ctx.strokeRect(posX, posY, COL_WIDTH, ROW_HEIGHT);
+        ctx.fillText(role_description, canvas.width / 2, 100);
+    }
+
+    // This function clear the role description shows on the page
+    function clearRoleDescription() {
+        var posX = canvas.width / 4 - 1, 
+            posY = 309;
+        ctx.clearRect(posX, posY, COL_WIDTH + 10, ROW_HEIGHT + 10);
+        ctx.clearRect(posX * 2, posY, COL_WIDTH + 10, ROW_HEIGHT + 10);
+        ctx.clearRect(0, 0, 500, 200);
+    }
+
+    // This function stop the game and output the game result also it bind the reset button
+    function gameOver(result) {
+        Game.stop = true;
+        ctx.fillText("You " + result + "!", canvas.width / 2, 40);
+        document.addEventListener('keyup', reset);
+    }
 
     /* This function serves as the kickoff point for the game loop itself
      * and handles properly calling the update and render methods.
@@ -50,9 +118,7 @@ var Engine = (function(game) {
          */
         update(dt);
         render();
-
-        if (game.player.life == 0)
-            game.end("lose");
+        checkGameEnd();
 
         /* Set our lastTime variable which is used to determine the time delta
          * for the next time this function is called.
@@ -62,13 +128,8 @@ var Engine = (function(game) {
         /* Use the browser's requestAnimationFrame function to call this
          * function again as soon as the browser is able to draw another frame.
          */
-        if(game.pause) {
-            document.addEventListener('keyup', reset);
-            return;
-        }
-
-        window.requestAnimationFrame(main);
-            
+        if(!Game.stop)
+            window.requestAnimationFrame(main);
     }
 
     /* This function does some initial setup that should only occur once,
@@ -78,7 +139,15 @@ var Engine = (function(game) {
     function init() {
         //reset();
         lastTime = Date.now();
-        main();
+        loadEntry();
+    }
+
+    // this function check if the game is end.
+    function checkGameEnd() {
+        if (checkReachGoal())
+            gameOver("win");
+        if (Game.player.life == 0)
+            gameOver("lose");
     }
 
     /* This function is called by main (our game loop) and itself calls all
@@ -92,22 +161,22 @@ var Engine = (function(game) {
      */
     function update(dt) {
         updateEntities(dt);
-        if (checkReachGoal())
-            game.end("win");
         if (checkCollisions())
-            game.player.attacked();
+            Game.player.attacked();
     }
 
+    // This function check if player has reached the goal.
     function checkReachGoal() {
-        if (game.player.row === 0)
+        if (Game.player.row === 0)
             return true;
     }
 
+    // This function check if player is hit by enemy.
     function checkCollisions() {
         var collision = false;
-        game.allEnemies.forEach(function(enemy) {
-            if (enemy.row === game.player.row &&
-                enemy.col === game.player.col) {
+        Game.allEnemies.forEach(function(enemy) {
+            if (enemy.row === Game.player.row &&
+                enemy.col === Game.player.col) {
                 collision = true;
             }
         });
@@ -122,10 +191,10 @@ var Engine = (function(game) {
      * render methods.
      */
     function updateEntities(dt) {
-        game.allEnemies.forEach(function(enemy) {
+        Game.allEnemies.forEach(function(enemy) {
             enemy.update(dt);
         });
-        game.player.update();
+        Game.player.update();
     }
 
     /* This function initially draws the "game level", it will then call
@@ -168,7 +237,7 @@ var Engine = (function(game) {
         }
 
         ctx.clearRect(0 , 0, canvas.width, 50);
-        for(var i = 0; i < game.player.life; i++) {
+        for(var i = 0; i < Game.player.life; i++) {
             image = Resources.get('images/Heart.png');
             ctx.drawImage(image, canvas.width - (30 * i) - 45, 0, image.width / 3, image.height / 3);
         }
@@ -184,13 +253,13 @@ var Engine = (function(game) {
         /* Loop through all of the objects within the allEnemies array and call
          * the render function you have defined.
          */
-        game.allEnemies.forEach(function(enemy) {
+        Game.allEnemies.forEach(function(enemy) {
             enemy.render();
         });
 
-        if (game.player.invincible)
+        if (Game.player.invincible)
             ctx.globalAlpha = 0.5
-        game.player.render();
+        Game.player.render();
         ctx.globalAlpha = 1;
     }
 
@@ -200,12 +269,13 @@ var Engine = (function(game) {
      */
     function reset(e) {
         if (e.keyCode === 13){
-            document.removeEventListener('keyup', Engine.reset);
-            document.removeEventListener('keyup', game.gameControl);
-            game.bindEntryControl();
+            document.removeEventListener('keyup', reset);
+            document.removeEventListener('keyup', gameControl);
+            document.removeEventListener('keyup', entryControl);
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            game.showRoleDescription(Game.role[0]);
-            game.pause = false;
+            // game.showRoleDescription(Game.role[0]);
+            loadEntry();
+            Game.stop = false;
         }
         // noop
     }
@@ -221,7 +291,7 @@ var Engine = (function(game) {
         'images/enemy-bug.png',
         'images/char-boy.png',
         'images/char-girl.png',
-        'images/Heart.png'
+        'images/Heart.png',
     ]);
     Resources.onReady(init);
 
@@ -229,6 +299,10 @@ var Engine = (function(game) {
      * object when run in a browser) so that developers can use it more easily
      * from within their app.js files.
      */
-    //global.ctx = ctx;
-    //global.canvas = canvas;
-}); //(this);
+    global.ctx = ctx;
+    global.canvas = canvas;
+}; //(this);
+
+window.onload = function() {
+    Engine(Game);
+}
